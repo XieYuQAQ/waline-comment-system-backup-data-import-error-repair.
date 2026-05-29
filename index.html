@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Waline 备份数据清理工具</title>
+</head>
+<body>
+    <h2>Waline 备份数据清理</h2>
+    <input type="file" id="fileInput" accept=".json">
+    <button onclick="cleanAndDownload()">清理并下载</button>
+    
+    <script>
+    function cleanAndDownload() {
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert('请先选择备份文件');
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const backup = JSON.parse(e.target.result);
+                
+                // 清理 Comment 数据
+                if (backup.data && backup.data.Comment) {
+                    backup.data.Comment = backup.data.Comment.map(comment => ({
+                        ...comment,
+                        // 清理反斜杠和引号转义
+                        comment: comment.comment ? comment.comment
+                            .replace(/\\/g, '\\\\')  // 转义反斜杠
+                            .replace(/"/g, '\\"')     // 转义双引号
+                            : comment.comment,
+                        nick: comment.nick || '',
+                        mail: comment.mail || '',
+                        link: comment.link || '',
+                    }));
+                }
+                
+                // 下载清理后的文件
+                const blob = new Blob(
+                    [JSON.stringify(backup, null, 2)], 
+                    { type: 'application/json' }
+                );
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'waline-backup-cleaned.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                alert('清理完成！请使用新文件重新导入');
+            } catch (error) {
+                alert('文件解析失败：' + error.message);
+            }
+        };
+        reader.readAsText(file);
+    }
+    </script>
+</body>
+</html>
